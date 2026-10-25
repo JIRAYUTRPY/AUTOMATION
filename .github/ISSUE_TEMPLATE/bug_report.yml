@@ -1,0 +1,15 @@
+name: Bug report
+description: Something is broken
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes: { label: Version, description: Shown on the home page or in AUTOMATION_VERSION }
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes: { label: What happened, description: Steps to reproduce and expected vs actual behavior }
+    validations: { required: true }
+  - type: textarea
+    id: logs
+    attributes: { label: Logs, description: "`docker compose logs web worker` (remove anything sensitive)", render: shell }
