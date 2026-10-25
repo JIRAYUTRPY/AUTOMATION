@@ -3,14 +3,19 @@
 Monorepo for a platform that discovers public website UI elements, lets users design test cases,
 and runs **explicitly approved** Playwright tests (read-only by default).
 
-## Status: Milestone 1 - scaffold only
+## Status: Milestones 1-2 (partial)
 
 Implemented: monorepo layout, strict TypeScript, ESLint/Prettier/Vitest setup, validated
 environment config with server-side upper bounds, redacting structured logger, web app skeleton
 with `/api/health`, worker skeleton with `/health` and `/health/ready` (launches Chromium),
 Dockerfiles and Docker Compose.
 
-**Not implemented yet:** database/migrations, projects, URL validation, crawler, scanner, test
+Also: URL/SSRF policy (`packages/shared/src/url-policy.ts`: protocol/port/credential checks,
+private-IP blocking incl. IPv6 and mapped forms, DNS check of every address, crawl-URL
+normalization, scope check) and the first SQL migration (`packages/db/migrations/0001_init.sql`).
+Neither is wired into the apps yet.
+
+**Not implemented yet:** ORM/data layer, project API and UI, crawler, scanner, test
 builder, test runner, reports, egress restriction. Nothing here claims those work.
 
 ## Layout
@@ -19,6 +24,7 @@ builder, test runner, reports, egress restriction. Nothing here claims those wor
 | ----------------- | -------------------------------------------------------------- |
 | `apps/web`        | Next.js (App Router) dashboard + API routes                    |
 | `apps/worker`     | Node worker that owns Playwright/Chromium (scanner, runner)    |
+| `packages/db`     | SQL migrations (not yet wired to an ORM)                       |
 | `packages/shared` | Zod config, structured logger, URL redaction (shared by both)  |
 
 The web app never launches a browser. Only the worker does, in its own container.
