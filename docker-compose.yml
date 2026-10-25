@@ -1,0 +1,63 @@
+name: automation
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '${APP_PORT:-3000}:3000'
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-file:/data/automation.db}
+      ARTIFACT_DIR: ${ARTIFACT_DIR:-/data/artifacts}
+    volumes:
+      - app-data:/data
+    networks: [edge, backend]
+    depends_on:
+      worker:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    init: true
+    shm_size: '1gb'
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-file:/data/automation.db}
+      ARTIFACT_DIR: ${ARTIFACT_DIR:-/data/artifacts}
+      WORKER_PORT: '4001'
+    volumes:
+      - app-data:/data
+    # No published ports. Reachable only from `backend`.
+    # `egress` gives outbound internet; it does NOT yet restrict destinations (see README).
+    networks: [backend, egress]
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+  egress: {}
+
+volumes:
+  app-data: {}
