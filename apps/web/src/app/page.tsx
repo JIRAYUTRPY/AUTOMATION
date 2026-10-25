@@ -1,3 +1,5 @@
+import { UpdatePanel } from '@/components/UpdatePanel';
+
 export const dynamic = 'force-dynamic';
 
 export default function Home() {
@@ -11,6 +13,7 @@ export default function Home() {
       <p className="mt-3 text-sm text-neutral-600">
         Service health: <code>/api/health</code>
       </p>
+      <UpdatePanel />
     </main>
   );
 }

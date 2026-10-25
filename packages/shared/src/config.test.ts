@@ -23,3 +23,16 @@ describe('loadConfig', () => {
     expect(c.ALLOWED_ORIGINS).toEqual(['https://a.example', 'https://b.example']);
   });
 });
+
+describe('loadConfig update settings', () => {
+  it('defaults to updater disabled and dev version', () => {
+    const c = loadConfig({});
+    expect(c.UPDATER_ENABLED).toBe(false);
+    expect(c.APP_VERSION).toBe('dev');
+    expect(c.ADMIN_TOKEN).toBeUndefined();
+  });
+  it('rejects short admin tokens and malformed repos', () => {
+    expect(() => loadConfig({ ADMIN_TOKEN: 'short' })).toThrow(/ADMIN_TOKEN/);
+    expect(() => loadConfig({ UPDATE_REPO: 'not a repo' })).toThrow(/UPDATE_REPO/);
+  });
+});

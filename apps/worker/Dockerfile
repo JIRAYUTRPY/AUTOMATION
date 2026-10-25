@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 # The image tag MUST match the "playwright" version pinned in apps/worker/package.json.
 FROM mcr.microsoft.com/playwright:v1.55.0-noble
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NODE_ENV=production
+ARG APP_VERSION=dev
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NODE_ENV=production APP_VERSION=$APP_VERSION
 RUN corepack enable
 # Fixed uid/gid so web and worker can share the /data volume.
 RUN groupadd -g 10001 app && useradd -u 10001 -g 10001 -m app \

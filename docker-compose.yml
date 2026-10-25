@@ -1,18 +1,28 @@
 name: automation
 
+# Images are pulled from the registry (override AUTOMATION_IMAGE_PREFIX for forks). `build:` is
+# only used for local development: `docker compose up --build`.
 services:
   web:
+    image: ${AUTOMATION_IMAGE_PREFIX:-ghcr.io/jirayutrpy/automation}-web:${AUTOMATION_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        APP_VERSION: ${AUTOMATION_VERSION:-dev}
     ports:
       - '${APP_PORT:-3000}:3000'
-    env_file:
-      - path: .env
-        required: false
+    # Explicit environment (no env_file): each service only receives the variables it needs.
     environment:
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL:-file:/data/automation.db}
       ARTIFACT_DIR: ${ARTIFACT_DIR:-/data/artifacts}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      UPDATER_ENABLED: ${UPDATER_ENABLED:-false}
+      UPDATER_URL: http://updater:4002
+      UPDATER_TOKEN: ${UPDATER_TOKEN:-}
+      UPDATE_REPO: ${UPDATE_REPO:-JIRAYUTRPY/automation}
     volumes:
       - app-data:/data
     networks: [edge, backend]
@@ -28,18 +38,27 @@ services:
     restart: unless-stopped
 
   worker:
+    image: ${AUTOMATION_IMAGE_PREFIX:-ghcr.io/jirayutrpy/automation}-worker:${AUTOMATION_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
+      args:
+        APP_VERSION: ${AUTOMATION_VERSION:-dev}
     init: true
     shm_size: '1gb'
-    env_file:
-      - path: .env
-        required: false
+    # The worker drives a browser against untrusted sites: it gets NO admin/updater secrets.
     environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL:-file:/data/automation.db}
       ARTIFACT_DIR: ${ARTIFACT_DIR:-/data/artifacts}
+      ARTIFACT_RETENTION_DAYS: ${ARTIFACT_RETENTION_DAYS:-30}
       WORKER_PORT: '4001'
+      BROWSER_CONCURRENCY: ${BROWSER_CONCURRENCY:-2}
+      CRAWL_MAX_PAGES: ${CRAWL_MAX_PAGES:-100}
+      CRAWL_MAX_CONCURRENCY: ${CRAWL_MAX_CONCURRENCY:-2}
+      NAVIGATION_TIMEOUT_MS: ${NAVIGATION_TIMEOUT_MS:-15000}
+      JOB_TIMEOUT_MS: ${JOB_TIMEOUT_MS:-600000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
     volumes:
       - app-data:/data
     # No published ports. Reachable only from `backend`.
@@ -51,6 +70,35 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    restart: unless-stopped
+
+  # OPTIONAL. Enabled only with COMPOSE_PROFILES=updater (install.sh --with-updater).
+  # Mounts the Docker socket = root-equivalent on this host. See SECURITY.md.
+  updater:
+    profiles: [updater]
+    image: ${AUTOMATION_IMAGE_PREFIX:-ghcr.io/jirayutrpy/automation}-updater:${AUTOMATION_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: apps/updater/Dockerfile
+      args:
+        APP_VERSION: ${AUTOMATION_VERSION:-dev}
+    environment:
+      UPDATER_TOKEN: ${UPDATER_TOKEN:-}
+      INSTALL_DIR: ${INSTALL_DIR:-/opt/automation}
+      UPDATE_REPO: ${UPDATE_REPO:-JIRAYUTRPY/automation}
+      COMPOSE_PROJECT: automation
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Same absolute path inside and outside so `docker compose` resolves files identically.
+      - ${INSTALL_DIR:-/opt/automation}:${INSTALL_DIR:-/opt/automation}
+    security_opt:
+      - no-new-privileges:true
+    networks: [backend, egress]
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 networks:

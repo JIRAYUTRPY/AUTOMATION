@@ -14,6 +14,8 @@ COPY apps/web apps/web
 RUN pnpm --filter @automation/web build
 
 FROM node:22-bookworm-slim AS runtime
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
 ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000 NEXT_TELEMETRY_DISABLED=1
 # Fixed uid/gid so web and worker can share the /data volume.
 RUN groupadd -g 10001 app && useradd -u 10001 -g 10001 -m app \

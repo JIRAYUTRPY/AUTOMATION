@@ -25,6 +25,18 @@ const schema = z.object({
   CRAWL_MAX_CONCURRENCY: intFromEnv(2, LIMITS.maxConcurrency),
   NAVIGATION_TIMEOUT_MS: intFromEnv(15_000, LIMITS.maxNavigationTimeoutMs, 1000),
   JOB_TIMEOUT_MS: intFromEnv(600_000, LIMITS.maxJobTimeoutMs, 1000),
+  APP_VERSION: z.string().default('dev'),
+  ADMIN_TOKEN: z.string().min(32, 'ADMIN_TOKEN must be at least 32 characters').optional(),
+  UPDATER_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  UPDATER_URL: z.string().url().default('http://updater:4002'),
+  UPDATER_TOKEN: z.string().min(32, 'UPDATER_TOKEN must be at least 32 characters').optional(),
+  UPDATE_REPO: z
+    .string()
+    .regex(/^[\w.-]+\/[\w.-]+$/, 'UPDATE_REPO must look like owner/repo')
+    .default('JIRAYUTRPY/automation'),
   ALLOWED_ORIGINS: z
     .string()
     .default('')

@@ -1,0 +1,32 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
+      - name: Updater tests (zero-dependency)
+        run: node --test "apps/updater/test/*.test.mjs"
+      - name: Migration constraints
+        run: python3 packages/db/scripts/verify_migration.py packages/db/migrations/0001_init.sql
+      - name: Compose file is valid
+        run: docker compose -f docker-compose.yml config -q
+      - name: Shell script lint
+        run: shellcheck install.sh tests/install.test.sh
+      - name: Installer tests (fake docker, no network)
+        run: bash tests/install.test.sh
